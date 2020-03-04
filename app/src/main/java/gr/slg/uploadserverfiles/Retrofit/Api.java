@@ -18,9 +18,13 @@ public interface Api {
     @POST("uploadFile")
     Call<MyResponse> uploadImage(@Part("image\"; filename=\"file\" ") RequestBody file);
 
+//    @Multipart
+//    @POST("uploadFile")
+//    Call<MyResponse> uploadImagePart(@Part MultipartBody.Part file);
+
     @Multipart
     @POST("uploadFile")
-    Call<MyResponse> uploadImagePart(@Part MultipartBody.Part file);
+    Call<ServerResponse> uploadImagePart(@Part MultipartBody.Part file);
 
     void setBaseUrl(String ip);
 

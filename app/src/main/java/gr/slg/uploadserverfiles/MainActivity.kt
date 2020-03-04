@@ -4,20 +4,24 @@ import android.Manifest
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.database.Cursor
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import android.provider.Settings
+import android.util.Log
 import android.view.View
 import android.widget.Button
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import androidx.loader.content.CursorLoader
 import com.google.gson.GsonBuilder
 import gr.slg.uploadserverfiles.Retrofit.Api
 import gr.slg.uploadserverfiles.Retrofit.MyResponse
+import gr.slg.uploadserverfiles.Retrofit.ServerResponse
 import okhttp3.MediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
@@ -38,27 +42,10 @@ class MainActivity : AppCompatActivity() {
 
         btnUpload = findViewById(R.id.btn_upload)
 
-
-        //checking the permission
-        //checking the permission
-//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && ContextCompat.checkSelfPermission(
-//                this,
-//                Manifest.permission.READ_EXTERNAL_STORAGE
-//            )
-//            != PackageManager.PERMISSION_GRANTED
-//        ) {
-//            val intent = Intent(
-//                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-//                Uri.parse("package:$packageName")
-//            )
-//            finish()
-//            startActivity(intent)
-//            return
-//        }
-
         btnUpload.setOnClickListener(object : View.OnClickListener {
             override fun onClick(v: View?) {
-                var i = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
+                var i = Intent(Intent.ACTION_GET_CONTENT)
+                i.setType("*/*")
                 startActivityForResult(i, 100)
             }
         })
@@ -68,20 +55,25 @@ class MainActivity : AppCompatActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == 100 && resultCode == Activity.RESULT_OK && data != null) {
-            var selectedImage = data.data
-            uploadFile(selectedImage)
+            var selectedFile = data.data
+            uploadFile(selectedFile)
         }
     }
 
-    private fun uploadFile(fileUri: Uri) {
+    private fun uploadFile(path: Uri) {
         //creating a file
-        var file = File(getRealPathFromUri(fileUri))
+//        var file = File(getRealPathFromURI(path))
+        var file = File(path.path)
+        var split = arrayOf(file.path.split(":"))
+        var filePath = split[0].get(1)
+        file = File(filePath)
+
 
         //creating request body for file
         var requestFile =
-            RequestBody.create(MediaType.parse(contentResolver.getType(fileUri)), file)
+            RequestBody.create(MediaType.parse(contentResolver.getType(path)), file)
 
-        var fileSend = MultipartBody.Part.createFormData("file",file.name,requestFile)
+        var fileSend = MultipartBody.Part.createFormData("file", file.name, requestFile)
 
 
         //The gson builder
@@ -103,36 +95,59 @@ class MainActivity : AppCompatActivity() {
 
         //finally performing call
 
-        call.enqueue(object : retrofit2.Callback<MyResponse> {
-            override fun onFailure(call: Call<MyResponse>, t: Throwable) {
+        call.enqueue(object : retrofit2.Callback<ServerResponse> {
+            override fun onFailure(call: Call<ServerResponse>, t: Throwable) {
                 Toast.makeText(applicationContext, t.message, Toast.LENGTH_SHORT).show()
             }
 
-            override fun onResponse(call: Call<MyResponse>, response: Response<MyResponse>) {
-                if (!response.body()!!.error) {
-                    Toast.makeText(
-                        applicationContext,
-                        "File uploaded succesfully",
-                        Toast.LENGTH_SHORT
-                    ).show()
+            override fun onResponse(
+                call: Call<ServerResponse>,
+                response: Response<ServerResponse>
+            ) {
+                if (!response.body()!!.fileName.isNullOrEmpty()) {
+                    Toast.makeText(applicationContext, "File uploaded succesfully", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(applicationContext,response.body()!!.fileName + " " + response.body()!!.fileDownloadUri,Toast.LENGTH_SHORT).show()
                 } else {
-                    Toast.makeText(applicationContext, "Some error occured", Toast.LENGTH_SHORT)
-                        .show()
+                    Toast.makeText(applicationContext, "Some error occured", Toast.LENGTH_SHORT).show()
                 }
             }
         })
     }
 
-    private fun getRealPathFromUri(uri: Uri): String? {
-        var proj = arrayOf(MediaStore.Images.Media.DATA)
-        var loader = CursorLoader(this, uri, proj, null, null, null)
-        var cursor = loader.loadInBackground()
-
-        var column_index = cursor!!.getColumnIndexOrThrow(MediaStore.Images.Media.DATA)
+    fun getRealPathFromURI(contentUri: Uri): String {
+        var proj = arrayOf(MediaStore.Audio.Media.DATA)
+        var cursor = managedQuery(contentUri, proj, null, null, null);
+        var column_index = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA);
         cursor.moveToFirst()
-        var result = cursor.getString(column_index)
-        cursor.close()
-        return result
-
+        return cursor.getString(column_index)
     }
+
+//    private fun getRealPathFromUri(uri: Uri): String? {
+//        var proj = arrayOf(MediaStore.Files.FileColumns.DATA)
+////        var loader = CursorLoader(this, uri, proj, null, null, null)
+////        var cursor = loader.loadInBackground()
+////
+////        var column_index = cursor!!.getColumnIndexOrThrow(MediaStore.Images.Media.DATA)
+////        cursor.moveToFirst()
+////        var result = cursor.getString(column_index)
+////        cursor.close()
+////        return result
+//
+//        var path: String? = null
+//
+//        var cursor = contentResolver.query(uri,proj,null,null,null)
+//        if (cursor == null) {
+//            path = uri.path
+//        } else {
+//            cursor.moveToFirst()
+//            var column_index = cursor.getColumnIndexOrThrow(proj[0])
+//            path = cursor.getString(column_index)
+//            cursor.close()
+//        }
+//        if (path == null || path.isEmpty()) {
+//            return uri.path
+//        } else {
+//            return path
+//        }
+//    }
 }

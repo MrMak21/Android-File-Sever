@@ -1,118 +1,103 @@
 package gr.slg.uploadserverfiles
 
-import android.Manifest
 import android.app.Activity
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.database.Cursor
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
-import android.provider.Settings
-import android.util.Log
 import android.view.View
 import android.widget.Button
-import android.widget.Toast
+import android.widget.ImageView
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
-import androidx.core.net.toUri
-import androidx.loader.content.CursorLoader
-import com.google.gson.GsonBuilder
-import gr.slg.uploadserverfiles.Retrofit.Api
-import gr.slg.uploadserverfiles.Retrofit.MyResponse
-import gr.slg.uploadserverfiles.Retrofit.ServerResponse
-import okhttp3.MediaType
-import okhttp3.MultipartBody
-import okhttp3.RequestBody
-import retrofit2.Call
-import retrofit2.Response
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
+import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModelProvider
+import gr.slg.uploadserverfiles.vm.MainListener
+import gr.slg.uploadserverfiles.vm.MainViewModel
 import java.io.File
 
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(),MainListener {
+
+    lateinit var vm: MainViewModel
 
     lateinit var btnUpload: Button
+    lateinit var sendFile: Button
+    lateinit var fileName: TextView
+    lateinit var downloadUrl: TextView
+    lateinit var selectedFileName: TextView
+    lateinit var selectedFileSize: TextView
+    lateinit var selectedImage: ImageView
+
+    lateinit var path: Uri
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        vm = ViewModelProvider(this).get(MainViewModel::class.java)
+        vm.setMainListener(this)
+
+
         btnUpload = findViewById(R.id.btn_upload)
+        sendFile = findViewById(R.id.sendFile)
+        downloadUrl = findViewById(R.id.downloadUrl)
+        fileName = findViewById(R.id.fileName)
+        selectedFileName = findViewById(R.id.selectedFileName)
+        selectedFileSize = findViewById(R.id.selectedFileSize)
+        selectedImage = findViewById(R.id.selectedImage)
+
+        setUpListeners()
+        setUpObservers()
+    }
+
+    private fun setUpListeners() {
 
         btnUpload.setOnClickListener(object : View.OnClickListener {
             override fun onClick(v: View?) {
-                var i = Intent(Intent.ACTION_GET_CONTENT)
-                i.setType("*/*")
-                startActivityForResult(i, 100)
+                vm.selectFiles()
             }
         })
 
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == 100 && resultCode == Activity.RESULT_OK && data != null) {
-            var selectedFile = data.data
-            uploadFile(selectedFile)
-        }
-    }
-
-    private fun uploadFile(path: Uri) {
-        //creating a file
-//        var file = File(getRealPathFromURI(path))
-        var file = File(path.path)
-        var split = arrayOf(file.path.split(":"))
-        var filePath = split[0].get(1)
-        file = File(filePath)
-
-
-        //creating request body for file
-        var requestFile =
-            RequestBody.create(MediaType.parse(contentResolver.getType(path)), file)
-
-        var fileSend = MultipartBody.Part.createFormData("file", file.name, requestFile)
-
-
-        //The gson builder
-        val gson = GsonBuilder()
-            .setLenient()
-            .create()
-
-        //Creating retrofit object
-        val retrofit = Retrofit.Builder()
-            .baseUrl(Api.BASE_URL)
-            .addConverterFactory(GsonConverterFactory.create(gson))
-            .build()
-
-        //creating our Api
-        val api = retrofit.create(Api::class.java)
-
-        //creating a call and calling the upload image method
-        val call = api.uploadImagePart(fileSend)
-
-        //finally performing call
-
-        call.enqueue(object : retrofit2.Callback<ServerResponse> {
-            override fun onFailure(call: Call<ServerResponse>, t: Throwable) {
-                Toast.makeText(applicationContext, t.message, Toast.LENGTH_SHORT).show()
+        sendFile.setOnClickListener(object: View.OnClickListener {
+            override fun onClick(v: View?) {
+                vm.uploadFile(vm.file.value!!)
             }
+        })
+    }
 
-            override fun onResponse(
-                call: Call<ServerResponse>,
-                response: Response<ServerResponse>
-            ) {
-                if (!response.body()!!.fileName.isNullOrEmpty()) {
-                    Toast.makeText(applicationContext, "File uploaded succesfully", Toast.LENGTH_SHORT).show()
-                    Toast.makeText(applicationContext,response.body()!!.fileName + " " + response.body()!!.fileDownloadUri,Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(applicationContext, "Some error occured", Toast.LENGTH_SHORT).show()
+    private fun setUpObservers() {
+        vm.file.observe(this, Observer { it ->
+            if (it != null) {
+                var file = File(it.path)
+                selectedFileName.text = file.name
+                selectedFileSize.text = file.length().toString()
+                when (file.extension) {
+                    "jpeg" -> { selectedImage.setImageResource(R.drawable.ic_img) }
+                    "jpg" -> { selectedImage.setImageResource(R.drawable.ic_img) }
+                    "png" -> { selectedImage.setImageResource(R.drawable.ic_img) }
+                    "json" -> { selectedImage.setImageResource(R.drawable.ic_json) }
+                    "pdf" -> { selectedImage.setImageResource(R.drawable.ic_pdf) }
+                    else -> { selectedImage.setImageResource(R.drawable.ic_corrupted)
+                    }
                 }
             }
         })
+
+        vm.fileName.observe(this, Observer {
+            if (it != null) {
+                fileName.text = it
+            }
+        })
+
+        vm.downloadUrl.observe(this, Observer {
+            if (it != null) {
+                downloadUrl.text = it
+            }
+        })
     }
+
+
 
     fun getRealPathFromURI(contentUri: Uri): String {
         var proj = arrayOf(MediaStore.Audio.Media.DATA)
@@ -122,32 +107,17 @@ class MainActivity : AppCompatActivity() {
         return cursor.getString(column_index)
     }
 
-//    private fun getRealPathFromUri(uri: Uri): String? {
-//        var proj = arrayOf(MediaStore.Files.FileColumns.DATA)
-////        var loader = CursorLoader(this, uri, proj, null, null, null)
-////        var cursor = loader.loadInBackground()
-////
-////        var column_index = cursor!!.getColumnIndexOrThrow(MediaStore.Images.Media.DATA)
-////        cursor.moveToFirst()
-////        var result = cursor.getString(column_index)
-////        cursor.close()
-////        return result
-//
-//        var path: String? = null
-//
-//        var cursor = contentResolver.query(uri,proj,null,null,null)
-//        if (cursor == null) {
-//            path = uri.path
-//        } else {
-//            cursor.moveToFirst()
-//            var column_index = cursor.getColumnIndexOrThrow(proj[0])
-//            path = cursor.getString(column_index)
-//            cursor.close()
-//        }
-//        if (path == null || path.isEmpty()) {
-//            return uri.path
-//        } else {
-//            return path
-//        }
-//    }
+    override fun selectFile() {
+        var i = Intent(Intent.ACTION_GET_CONTENT)
+        i.setType("*/*")
+        startActivityForResult(i, 100)
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == 100 && resultCode == Activity.RESULT_OK && data != null) {
+            vm.getSelectedFile(data.data)
+        }
+    }
+
 }

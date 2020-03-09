@@ -6,6 +6,48 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
+    <ImageView
+        android:id="@+id/selectedImage"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        tools:src="@drawable/ic_android_black_24dp"
+        app:layout_constraintVertical_bias="0.1"/>
+
+    <TextView
+        android:id="@+id/selectedFileName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        tools:text="aek.jpg"
+        app:layout_constraintTop_toTopOf="@id/selectedImage"
+        app:layout_constraintStart_toEndOf="@id/selectedImage"
+        android:layout_marginLeft="8dp"
+        />
+
+    <TextView
+        android:id="@+id/selectedFileSize"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        tools:text="80 Kb"
+        app:layout_constraintTop_toBottomOf="@id/selectedFileName"
+        app:layout_constraintStart_toEndOf="@id/selectedImage"
+        android:layout_marginLeft="8dp"
+        android:layout_marginTop="2dp"
+        />
+
+    <Button
+        android:id="@+id/sendFile"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="SEnd"
+        app:layout_constraintTop_toBottomOf="@id/selectedFileSize"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="16dp"/>
+
     <Button
         android:id="@+id/btn_upload"
         android:layout_width="wrap_content"
@@ -15,6 +57,26 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         android:text="Upload"/>
+
+    <TextView
+        android:id="@+id/fileName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toBottomOf="@id/btn_upload"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="16dp"
+        tools:text="file name"/>
+
+    <TextView
+        android:id="@+id/downloadUrl"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toBottomOf="@id/fileName"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="8dp"
+        tools:text="download url"/>
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>
